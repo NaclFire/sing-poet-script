@@ -1,0 +1,64 @@
+{
+  "log": {
+    "disabled": false,
+    "level": "info"
+  },
+  "dns": {
+    "servers": [
+      {
+        "tag": "google-tls",
+        "type": "tls",
+        "server": "dns.google",
+        "domain_resolver": "dns-local"
+      },
+      {
+        "tag": "dns-local",
+        "type": "local"
+      }
+    ],
+    "disable_cache": false,
+    "disable_expire": false
+  },
+  "inbounds": [
+    {
+      "type": "tuic",
+      "tag": "tuic-in",
+      "listen": "::",
+      "listen_port": 10000,
+      "congestion_control": "bbr",
+      "auth_timeout": "3s",
+      "zero_rtt_handshake": false,
+      "heartbeat": "10s",
+      "tls": {
+        "enabled": true,
+        "server_name":"yourdomain.com",
+        "certificate_path": "/etc/sing-poet/cert.crt",
+        "key_path": "/etc/sing-poet/private.key"
+      }
+    }
+  ],
+  "outbounds": [
+    {
+      "type": "direct",
+      "tag": "direct"
+    }
+  ],
+  "route": {
+    "rules": [
+      {
+        "protocol": "dns",
+        "action": "hijack-dns"
+      },
+      {
+        "inbound": "tuic-in",
+        "outbound": "direct"
+      }
+    ],
+    "default_domain_resolver": {
+      "server": "google-tls",
+      "strategy": "prefer_ipv4"
+    },
+    "final": "direct",
+    "auto_detect_interface": true
+  }
+}
