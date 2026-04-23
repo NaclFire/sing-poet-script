@@ -73,7 +73,35 @@ download_binary() {
 
     rm -rf "$TMP"
 }
+install_config() {
 
+    CONFIG_DIR="/etc/sing-poet"
+    CONFIG_REPO="NaclFire/sing-poet-script"
+    CONFIG_PATH="config"
+
+    info "Preparing config directory..."
+
+    mkdir -p "$CONFIG_DIR"
+
+    API="https://api.github.com/repos/${CONFIG_REPO}/contents/${CONFIG_PATH}"
+
+    info "Downloading default configs..."
+
+    FILES=$(curl -s "$API" | grep download_url | cut -d '"' -f4)
+
+    for url in $FILES; do
+        name=$(basename "$url")
+
+        # 不覆盖已有配置（非常重要）
+        if [ -f "${CONFIG_DIR}/${name}" ]; then
+            warn "$name exists, skip"
+            continue
+        fi
+
+        info "Downloading $name"
+        curl -L -o "${CONFIG_DIR}/${name}" "$url"
+    done
+}
 create_service() {
 cat >/etc/systemd/system/${SERVICE_NAME}.service <<EOF
 [Unit]
@@ -96,12 +124,61 @@ EOF
 
     systemctl daemon-reload
 }
+configure_sing_poet() {
 
+    CONFIG_DIR="/etc/sing-poet"
+
+    NODETYPE_LOWER=$(echo "$NODETYPE" | tr '[:upper:]' '[:lower:]')
+
+    SRC_SERVER="${CONFIG_DIR}/server_${NODETYPE_LOWER}.json"
+    DST_SERVER="${CONFIG_DIR}/server.json"
+    PANEL_FILE="${CONFIG_DIR}/panel.json"
+
+    info "Configuring sing-poet..."
+
+    # ===== 检查 server 模板 =====
+    if [ ! -f "$SRC_SERVER" ]; then
+        err "Node type config not found: $SRC_SERVER"
+        exit 1
+    fi
+
+    # ===== 复制 server 配置 =====
+    cp -f "$SRC_SERVER" "$DST_SERVER"
+
+    info "Using node type: $NODETYPE"
+
+    # ===== 修改 panel.json =====
+    if [ ! -f "$PANEL_FILE" ]; then
+        err "panel.json not found"
+        exit 1
+    fi
+
+    sed -i "s/vmess/${NODETYPE_LOWER}/g" "$PANEL_FILE"
+    sed -i "s|http://localhost:8384|${APIHOST}|g" "$PANEL_FILE"
+    sed -i "s/your-apikey/${APIKEY}/g" "$PANEL_FILE"
+    sed -i "s/16/${NODEID}/g" "$PANEL_FILE"
+
+    info "Configuration completed."
+}
 install_service() {
+
     check_root
     detect_arch
+
+    NODETYPE="$2"
+    APIHOST="$3"
+    APIKEY="$4"
+    NODEID="$5"
+
+    [ -z "$NODETYPE" ] && err "Missing nodetype"
+    [ -z "$APIHOST" ] && err "Missing apihost"
+    [ -z "$APIKEY" ] && err "Missing apikey"
+    [ -z "$NODEID" ] && err "Missing nodeid"
+
     get_download_url
     download_binary
+    install_config
+    configure_sing_poet
     create_service
 
     systemctl enable ${SERVICE_NAME}
@@ -146,7 +223,10 @@ uninstall)
     remove_service
     ;;
 *)
-    echo "Usage: $0 {install|update|uninstall}"
+    echo "Usage:"
+    echo "  $0 install <nodetype> <apihost> <apikey> <nodeid>"
+    echo "  $0 update"
+    echo "  $0 uninstall"
     exit 1
     ;;
 esac
