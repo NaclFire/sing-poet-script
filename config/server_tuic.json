@@ -31,6 +31,9 @@
       "heartbeat": "10s",
       "tls": {
         "enabled": true,
+        "alpn": [
+          "h3"
+        ],
         "server_name":"yourdomain.com",
         "certificate_path": "/etc/sing-poet/cert.crt",
         "key_path": "/etc/sing-poet/private.key"
