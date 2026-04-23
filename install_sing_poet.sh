@@ -21,7 +21,72 @@ check_root() {
         exit 1
     }
 }
+detect_os() {
 
+    if [ -f /etc/os-release ]; then
+        . /etc/os-release
+        OS=$ID
+        VERSION=$VERSION_ID
+    else
+        err "Unsupported system"
+        exit 1
+    fi
+
+    info "OS: $OS $VERSION"
+}
+install_base_tools() {
+
+    info "Checking system dependencies..."
+
+    case "$OS" in
+        ubuntu|debian)
+
+            export DEBIAN_FRONTEND=noninteractive
+
+            info "Updating apt..."
+
+            apt-get update --allow-releaseinfo-change -y
+
+            apt-get install -y \
+                curl \
+                tar \
+                gzip \
+                ca-certificates
+
+            ;;
+
+        centos|rocky|almalinux|rhel)
+
+            info "Updating yum..."
+
+            yum makecache -y || dnf makecache -y
+
+            yum install -y curl tar gzip || \
+            dnf install -y curl tar gzip
+
+            ;;
+
+        *)
+
+            err "Unsupported OS: $OS"
+            exit 1
+            ;;
+    esac
+}
+check_systemd() {
+
+    if ! command -v systemctl >/dev/null; then
+        err "systemd not found"
+        exit 1
+    fi
+}
+prepare_env() {
+
+    check_root
+    detect_os
+    install_base_tools
+    check_systemd
+}
 detect_arch() {
     ARCH=$(uname -m)
 
@@ -200,6 +265,7 @@ install_service() {
 
 update_service() {
     check_root
+    prepare_env
     detect_arch
     get_download_url
     download_binary
