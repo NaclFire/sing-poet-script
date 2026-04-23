@@ -45,16 +45,27 @@ detect_arch() {
 }
 
 get_download_url() {
+
     API="https://api.github.com/repos/${REPO}/releases/latest"
 
-    URL=$(curl -s "$API" \
-      | jq -r ".assets[] | select(.name|test(\"linux.*${ARCH}\")) | .browser_download_url" \
-      | head -n1)
+    info "Fetching latest release info..."
+
+    JSON=$(curl -fsSL "$API")
+
+    URL=$(echo "$JSON" \
+        | grep browser_download_url \
+        | grep linux \
+        | grep "$ARCH" \
+        | head -n1 \
+        | cut -d '"' -f4)
 
     [ -z "$URL" ] && {
         err "No release found for arch $ARCH"
         exit 1
     }
+
+    info "Download URL:"
+    info "$URL"
 }
 
 download_binary() {
