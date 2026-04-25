@@ -39,8 +39,8 @@
       "tls": {
         "enabled": true,
         "server_name": "youtdomain.com",
-        "certificate": "/etc/sing-poet/cert.crt",
-        "private_key": "/etc/sing-poet/private.key"
+        "certificate_path": "/etc/sing-poet/cert.crt",
+        "key_path": "/etc/sing-poet/private.key"
       }
     }
   ],
