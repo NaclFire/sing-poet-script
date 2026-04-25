@@ -37,6 +37,8 @@
         "7=500-1000"
       ],
       "tls": {
+        "enabled": true,
+        "server_name": "youtdomain.com",
         "certificate": "/etc/sing-poet/cert.crt",
         "private_key": "/etc/sing-poet/private.key"
       }
